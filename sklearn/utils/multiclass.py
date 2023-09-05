@@ -117,8 +117,8 @@ def unique_labels(*ys):
     return xp.asarray(sorted(ys_labels))
 
 
-def _is_integral_float(y):
-    return y.dtype.kind == "f" and np.all(y.astype(int) == y)
+def _is_integral_float(y, xp):
+    return y.dtype.kind == "f" and xp.all(xp.floor(y) == y)
 
 
 def is_multilabel(y):
@@ -183,13 +183,15 @@ def is_multilabel(y):
         return (
             len(y.data) == 0
             or (labels.size == 1 or (labels.size == 2) and (0 in labels))
-            and (y.dtype.kind in "biu" or _is_integral_float(labels))  # bool, int, uint
+            and (
+                y.dtype.kind in "biu" or _is_integral_float(labels, xp)
+            )  # bool, int, uint
         )
     else:
         labels = xp.unique_values(y)
 
         return len(labels) < 3 and (
-            y.dtype.kind in "biu" or _is_integral_float(labels)  # bool, int, uint
+            y.dtype.kind in "biu" or _is_integral_float(labels, xp)  # bool, int, uint
         )
 
 
@@ -379,7 +381,7 @@ def type_of_target(y, input_name=""):
     if xp.isdtype(y.dtype, "real floating"):
         # [.1, .2, 3] or [[.1, .2, 3]] or [[1., .2]] and not [1., 2., 3.]
         data = y.data if issparse(y) else y
-        if xp.any(data != xp.astype(data, int)):
+        if not _is_integral_float(data, xp):
             _assert_all_finite(data, input_name=input_name)
             return "continuous" + suffix
 
